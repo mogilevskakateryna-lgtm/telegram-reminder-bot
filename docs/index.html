@@ -1,0 +1,1249 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Бот-нагадувалка в Telegram</title>
+<meta name="description" content="Покрокова інструкція: як без програмування зробити собі Telegram-бота, який нагадує про задачі й платежі. Від Катерини Могілевської.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Бот-нагадувалка в Telegram — покрокова інструкція">
+<meta property="og:description" content="Як без програмування зробити собі Telegram-бота, який нагадує про задачі й не відстає, доки ви їх не зробите.">
+<meta property="og:image" content="https://mogilevskakateryna-lgtm.github.io/telegram-reminder-bot/kateryna.jpg">
+<meta property="og:url" content="https://mogilevskakateryna-lgtm.github.io/telegram-reminder-bot/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23092238'/%3E%3Cpath d='M18 33l9 9 19-20' stroke='%23F6CC46' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a workbook. Left rail = route through 7 stops (desktop), main column = numbered stations with tick-off tasks. */
+/* Layout: navy hero band with framed portrait → workbook below: left rail = route through stops, main column = stations with tick-off tasks.
+   Palette «лампа» from Kateryna's carousels: navy, blue, beige, yellow, rust, cream. */
+:root{
+  --navy:#092238; --blue:#459BCE; --beige:#F8D9A0; --yellow:#F6CC46; --rust:#9B421A; --cream:#FBF1DE;
+  --bg:#FBF1DE;
+  --surface:#FFFAF1;
+  --sunken:#F4E6CB;
+  --ink:#092238;
+  --muted:#4C5D6C;
+  --line:#E8D6B4;
+  --accent:#9B421A;
+  --accent-soft:#F5DDC9;
+  --accent-ink:#FBF1DE;
+  --mark:#F6CC46;
+  --mark-soft:#FCEDB8;
+  --mark-ink:#6A4C00;
+  --danger:#A3261B;
+  --danger-soft:#F7DCD5;
+  --code-bg:#092238;
+  --code-ink:#FBF1DE;
+  --bubble-me:#DDEEF8;
+  --bubble-bot:#FFFAF1;
+  --chat-bg:#459BCE;
+  --band:#092238;
+  --band-ink:#FBF1DE;
+  --f-display:"Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#071A2B; --surface:#0D2840; --sunken:#05141F; --ink:#FBF1DE; --muted:#AFBAC4; --line:#1E3C56;
+  --accent:#F6CC46; --accent-soft:#33301A; --accent-ink:#092238;
+  --mark:#F6CC46; --mark-soft:#33301A; --mark-ink:#F6CC46;
+  --danger:#F0896C; --danger-soft:#3A1E17;
+  --code-bg:#03111C; --code-ink:#FBF1DE; --bubble-me:#1D4A6A; --bubble-bot:#0D2840; --chat-bg:#459BCE;
+  --band:#0D2840; --band-ink:#FBF1DE;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#071A2B; --surface:#0D2840; --sunken:#05141F; --ink:#FBF1DE; --muted:#AFBAC4; --line:#1E3C56;
+  --accent:#F6CC46; --accent-soft:#33301A; --accent-ink:#092238;
+  --mark:#F6CC46; --mark-soft:#33301A; --mark-ink:#F6CC46;
+  --danger:#F0896C; --danger-soft:#3A1E17;
+  --code-bg:#03111C; --code-ink:#FBF1DE; --bubble-me:#1D4A6A; --bubble-bot:#0D2840; --chat-bg:#459BCE;
+  --band:#0D2840; --band-ink:#FBF1DE;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;}
+.cap{text-transform:uppercase;letter-spacing:.06em;font-weight:300}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+a{color:var(--accent);text-underline-offset:3px}
+h1,h2,h3{font-family:var(--f-display);font-weight:500;letter-spacing:-.005em;text-wrap:balance;line-height:1.1;margin:0}
+h1 em,h2 em{font-style:italic;font-weight:500}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+p{margin:0}
+:focus-visible{outline:3px solid var(--mark);outline-offset:2px;border-radius:4px}
+
+/* top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.topbar-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-family:var(--f-display);font-weight:600;font-size:19px}
+.meter{flex:1 1 220px;display:flex;align-items:center;gap:10px;min-width:0}
+.meter-track{flex:1;height:8px;background:var(--sunken);border-radius:99px;overflow:hidden}
+.meter-fill{height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
+.meter-label{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.btn-ghost{font:inherit;font-size:13px;background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:5px 10px;cursor:pointer}
+.btn-ghost:hover{color:var(--ink);border-color:var(--muted)}
+
+/* page frame */
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 80px}
+.grid{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)} .rail{display:none}}
+
+/* rail */
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px)}
+.rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;position:relative}
+.rail ol::before{content:"";position:absolute;left:13px;top:14px;bottom:14px;width:2px;background:var(--line)}
+.rail a{display:flex;align-items:center;gap:12px;padding:7px 8px 7px 0;text-decoration:none;color:var(--muted);font-size:14px;border-radius:8px;position:relative}
+.rail a:hover{color:var(--ink)}
+.dot{width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--surface);border:2px solid var(--line);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.rail a.done .dot{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rail a.done{color:var(--ink)}
+.rail a.current .dot{border-color:var(--accent);color:var(--accent)}
+.rail .rail-extra{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.rail .rail-extra a{padding-left:0;font-size:13px}
+
+/* hero band */
+.band{background:var(--band);color:var(--band-ink);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:44px 52px}
+.band-in{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:48px;align-items:center}
+@media (max-width:820px){.band-in{grid-template-columns:minmax(0,1fr);gap:28px}}
+.portrait{margin:0;background:var(--cream);padding:10px;max-width:340px;width:100%}
+.portrait img{display:block;width:100%;height:auto;max-width:100%;aspect-ratio:4/5;object-fit:cover}
+@media (max-width:820px){.portrait{max-width:260px}}
+.band .eyebrow{color:var(--yellow)}
+.band h1{font-size:clamp(38px,5.4vw,64px);color:var(--cream)}
+.band h1 em{color:var(--yellow)}
+.band .lead{font-size:18px;color:var(--cream);opacity:.9;max-width:58ch;margin-top:18px}
+.quote{margin-top:22px;padding-left:18px;border-left:2px solid var(--yellow);max-width:58ch;font-size:16px;color:var(--cream)}
+.quote .who{display:block;margin-top:10px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:300;opacity:.85}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.fact{border:1px solid rgba(251,241,222,.35);border-radius:999px;padding:6px 14px;font-size:14px;color:var(--cream)}
+.fact b{font-weight:600;color:var(--yellow)}
+
+/* "how it looks" */
+.looks{background:var(--chat-bg);border-radius:18px;padding:28px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:28px;align-items:start;margin-bottom:56px;scroll-margin-top:84px}
+@media (max-width:820px){.looks{grid-template-columns:minmax(0,1fr);padding:18px}}
+.looks h2{font-size:clamp(30px,3.6vw,40px);color:var(--navy)}
+.looks h2 em{color:#FBF1DE}
+.looks .side, .looks .side p, .looks .side li{color:#092238}
+.looks .side{display:flex;flex-direction:column;gap:14px;color:var(--navy)}
+.looks ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.looks .hint{color:var(--navy);opacity:.85}
+/* chat demo */
+.chat{background:var(--sunken);border-radius:16px;padding:14px;border:0;box-shadow:0 18px 40px rgba(9,34,56,.25);display:flex;flex-direction:column;gap:10px;min-width:0}
+.chat-head{display:flex;align-items:center;gap:10px;padding:2px 4px 8px;border-bottom:1px solid var(--line)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--navy);color:var(--yellow);display:grid;place-items:center;font-size:15px;font-weight:700}
+.chat-name{font-weight:700;font-size:14px;line-height:1.2}
+.chat-sub{font-size:12px;color:var(--muted)}
+.tag-example{margin-left:auto;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+.log{display:flex;flex-direction:column;gap:8px;min-height:250px;max-height:340px;overflow-y:auto;padding:4px 2px}
+.msg{max-width:86%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.45;white-space:pre-line;animation:pop .25s ease}
+.msg.me{align-self:flex-end;background:var(--bubble-me);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--bubble-bot);border-bottom-left-radius:4px}
+.kb{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:8px}
+.kb button{font:inherit;font-size:12px;padding:6px 4px;border-radius:8px;border:1px solid var(--line);background:var(--sunken);color:var(--ink);cursor:pointer}
+.kb button.wide{grid-column:1/-1}
+.kb button:hover{border-color:var(--accent)}
+@keyframes pop{from{transform:translateY(4px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.msg{animation:none}.meter-fill{transition:none}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font:inherit;font-size:13px;padding:6px 11px;border-radius:999px;border:1px solid var(--accent);background:var(--surface);color:var(--accent);cursor:pointer}
+.chips .lbl{width:100%;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.chips button:hover{background:var(--accent-soft)}
+
+/* blocks */
+section.step{scroll-margin-top:84px;margin-bottom:56px}
+.step-head{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
+.num{font-family:var(--f-body);font-weight:600;font-size:15px;width:44px;height:44px;flex:0 0 44px;border-radius:12px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.step.is-done .num{background:var(--accent);color:var(--accent-ink)}
+.step-head h2{font-size:clamp(26px,3.2vw,34px);margin-top:2px}
+.step-meta{font-size:13px;color:var(--muted);margin-top:4px}
+.why{color:var(--muted);max-width:68ch;margin:0 0 18px 60px}
+@media (max-width:600px){.why{margin-left:0}}
+
+.tasks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.task{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:start;transition:border-color .2s}
+.task.checked{border-color:var(--accent)}
+.task.checked .task-body > .t{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--accent)}
+.task input[type=checkbox]{appearance:none;width:24px;height:24px;margin:1px 0 0;border:2px solid var(--line);border-radius:7px;background:var(--surface);cursor:pointer;display:grid;place-items:center}
+.task input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+.task input[type=checkbox]:checked::after{content:"";width:6px;height:11px;border:solid var(--accent-ink);border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.task-body{min-width:0;display:flex;flex-direction:column;gap:8px}
+.t{font-weight:600}
+.task-body p,.task-body li{color:var(--ink)}
+.task-body ul,.task-body ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.hint{font-size:14px;color:var(--muted)}
+kbd{font-family:var(--f-mono);font-size:.82em;background:var(--sunken);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px}
+.ui{font-weight:700;background:var(--sunken);border-radius:5px;padding:0 6px;white-space:nowrap}
+
+/* callouts */
+.note{border-radius:var(--r);padding:12px 14px;font-size:15px;display:flex;gap:10px;align-items:flex-start}
+.note .ic{font-weight:800;font-family:var(--f-display);font-size:13px;flex:0 0 auto;margin-top:2px}
+.note.secret{background:var(--mark-soft);color:var(--ink);border:1px solid var(--mark)}
+.note.secret .ic{color:var(--mark-ink)}
+.note.info{background:var(--accent-soft)}
+.note.info .ic{color:var(--accent)}
+.note.warn{background:var(--danger-soft)}
+.note.warn .ic{color:var(--danger)}
+
+/* copy rows */
+.copyrow{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--sunken);max-width:100%}
+.copyrow code{flex:1;min-width:0;padding:8px 12px;overflow-x:auto;white-space:nowrap;font-size:14px;color:var(--ink)}
+.copybtn{font:inherit;font-size:13px;font-weight:700;border:0;border-left:1px solid var(--line);background:var(--surface);color:var(--accent);padding:0 14px;cursor:pointer;white-space:nowrap}
+.copybtn:hover{background:var(--accent-soft)}
+.copybtn.ok{background:var(--accent);color:var(--accent-ink)}
+
+/* code files */
+.file{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.file-head{display:flex;align-items:center;gap:10px;padding:10px 12px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.fname{font-family:var(--f-mono);font-weight:600}
+.fsize{font-size:12px;color:var(--muted)}
+.file-head .sp{flex:1}
+.btn{font:inherit;font-size:14px;font-weight:700;border-radius:8px;padding:7px 14px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink)}
+.btn.sec{background:var(--surface);color:var(--accent)}
+.btn.ok{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+pre.code{margin:0;background:var(--code-bg);color:var(--code-ink);font-family:var(--f-mono);font-size:12.5px;line-height:1.55;padding:14px 16px;overflow:auto;max-height:420px;tab-size:4}
+pre.code.short{max-height:none}
+.collapsed pre.code{max-height:180px;overflow:hidden;position:relative}
+.collapsed{position:relative}
+.fade{display:none}
+.collapsed .fade{display:block;position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(transparent,var(--code-bg));pointer-events:none}
+
+/* configurator */
+.config{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}
+@media (max-width:640px){.config{grid-template-columns:minmax(0,1fr)}}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:14px;font-weight:600}
+.field small{color:var(--muted);font-size:13px}
+select,input[type=number]{font:inherit;font-size:15px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:100%}
+.envbox{grid-column:1/-1}
+pre.env{margin:0;background:var(--code-bg);color:var(--code-ink);font-family:var(--f-mono);font-size:13.5px;line-height:1.7;padding:14px 16px;border-radius:8px;overflow-x:auto}
+pre.env .ph{color:var(--mark)}
+
+/* chat-phrase table */
+.cheat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.cheat{grid-template-columns:minmax(0,1fr)}}
+.cheat div{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.cheat .k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
+
+/* accordion */
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:0 16px}
+details.qa + details.qa{margin-top:8px}
+details.qa summary{cursor:pointer;padding:14px 0;font-weight:700;list-style:none;display:flex;gap:10px;align-items:baseline}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:"+";font-family:var(--f-mono);color:var(--accent);width:14px;flex:0 0 14px}
+details.qa[open] summary::before{content:"−"}
+details.qa .a{padding:0 0 16px 24px;display:flex;flex-direction:column;gap:8px}
+
+/* cost table */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+
+.part-done{display:none;margin-top:12px;font-weight:700;color:var(--accent)}
+.step.is-done .part-done{display:block}
+
+.finale{background:var(--rust);color:var(--cream);border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:10px}
+.finale h2{font-size:34px}
+.finale h2 em{color:var(--yellow)}
+.finale p{color:var(--cream);opacity:.92;max-width:62ch}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:calc(100% - 32px)}
+.toast.show{opacity:1}
+.footer{margin-top:60px;font-size:13px;color:var(--muted)}
+</style>
+
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <span class="brand">Бот-нагадувалка</span>
+    <div class="meter" aria-live="polite">
+      <div class="meter-track"><div class="meter-fill" id="meterFill"></div></div>
+      <span class="meter-label" id="meterLabel">0 з 0 кроків</span>
+    </div>
+    <button class="btn-ghost" id="resetBtn" type="button">Почати спочатку</button>
+  </div>
+</header>
+
+<section class="band" aria-label="Вступ">
+  <div class="band-in">
+    <figure class="portrait"><img src="kateryna.jpg" alt="Катерина Могілевська" width="720" height="900"></figure>
+    <div>
+      <div class="eyebrow">Покрокова інструкція · без програмування</div>
+      <h1>Бот у Telegram, який <em>не дає забути</em> жодної справи</h1>
+      <p class="lead">Пишете йому звичайним текстом: «щомісяця 10-го оплатити оренду», «завтра о 15:00 написати клієнту». Він нагадує вчасно, перепитує, доки не натиснете «Зроблено», і надсилає ранковий план та вечірній список незробленого.</p>
+      <p class="quote">Мене часто питають, як я зробила свого бота-нагадувалку. Тут усе, що потрібно, щоб зробити собі такого самого: покроково, з готовим кодом і поясненнями до кожної кнопки.<span class="who">Катерина Могілевська · продюсер, партнер з масштабування інфопродуктів</span></p>
+      <div class="facts">
+        <span class="fact"><b>40–60 хв</b> на все</span>
+        <span class="fact"><b>Без коду</b> — тільки копіювати й вставляти</span>
+        <span class="fact"><b>≈ $5–6</b> на місяць</span>
+        <span class="fact">Потрібен <b>комп'ютер</b></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="grid">
+    <nav class="rail" aria-label="Етапи">
+      <ol id="railList"></ol>
+      <div class="rail-extra">
+        <a href="#looks">Як виглядає бот</a>
+        <a href="#use">Як користуватися</a>
+        <a href="#trouble">Якщо щось не працює</a>
+        <a href="#cost">Скільки це коштує</a>
+      </div>
+    </nav>
+
+    <main>
+      <section class="looks" id="looks">
+        <div class="side">
+          <div class="eyebrow" style="color:var(--navy);margin:0">Що вийде в результаті</div>
+          <h2>Як виглядає <em>бот</em></h2>
+          <p>Це звичайний чат у Telegram. Ви пишете задачу своїми словами, бот сам розуміє дату й повтор.</p>
+          <ul>
+            <li>нагадує в потрібну хвилину і повторює, доки не натиснете «Зроблено»;</li>
+            <li>кнопки «+1 година», «Увечері», «Завтра», щоб відкласти в один дотик;</li>
+            <li>щоранку надсилає план на день, щовечора — що лишилося;</li>
+            <li>у неділю — підсумки тижня: що зроблено і що відкладали найчастіше.</li>
+          </ul>
+          <p class="hint">Праворуч — інтерактивний приклад. Натисніть фразу або кнопку під нагадуванням.</p>
+        </div>
+        <div class="chat" aria-label="Приклад розмови з ботом">
+          <div class="chat-head">
+            <div class="avatar">✓</div>
+            <div><div class="chat-name">Мої задачі</div><div class="chat-sub">бот</div></div>
+            <span class="tag-example">приклад</span>
+          </div>
+          <div class="log" id="chatLog"></div>
+          <div class="chips" id="chatChips">
+            <span class="lbl">Натисніть, щоб спробувати</span>
+            <button type="button" data-demo="0">щомісяця 10-го оплатити оренду</button>
+            <button type="button" data-demo="1">завтра о 15:00 написати клієнту</button>
+            <button type="button" data-demo="2">показати нагадування</button>
+            <button type="button" data-demo="3">що на сьогодні?</button>
+          </div>
+        </div>
+              </div>
+      </section>
+
+      <!-- STEP 0 -->
+      <section class="step" id="s0" data-title="Підготовка">
+        <div class="step-head"><div class="num">0</div><div><h2>Підготовка</h2><div class="step-meta">5 хвилин</div></div></div>
+        <p class="why">Відмічайте галочки по ходу: прогрес зберігається в цьому браузері, тож можна зробити перерву й повернутися. Бот складається з трьох частин: сам бот у Telegram, «мозок» (штучний інтелект Claude, який розуміє ваші фрази) і сервер, на якому бот працює цілодобово. Для кожної частини знадобиться окремий акаунт.</p>
+        <ul class="tasks">
+          <li class="task"><input type="checkbox" id="c0-1" aria-label="Готово"><div class="task-body"><span class="t">Сядьте за комп'ютер</span><p class="hint">З телефона зробити все теж можна, але на сайтах GitHub і Railway це незручно. Telegram знадобиться і на телефоні, і на комп'ютері (або в браузері: web.telegram.org).</p></div></li>
+          <li class="task"><input type="checkbox" id="c0-2" aria-label="Готово"><div class="task-body"><span class="t">Приготуйте банківську картку</span><p class="hint">Знадобиться двічі: поповнити баланс Claude (від $5) і, коли закінчиться пробний період, оплатити сервер (близько $5 на місяць).</p></div></li>
+          <li class="task"><input type="checkbox" id="c0-3" aria-label="Готово"><div class="task-body"><span class="t">Відкрийте нотатку для двох «секретів»</span><p>Протягом інструкції ви отримаєте <b>токен бота</b> і <b>ключ Claude</b>. Збережіть їх у нотатках на своєму пристрої або в менеджері паролів.</p>
+            <div class="note secret"><span class="ic">!</span><span>Ці два рядки — як паролі. Не надсилайте їх нікому в месенджерах і не публікуйте. Хто має токен, той може керувати вашим ботом. Хто має ключ, той витрачає ваші гроші.</span></div></div></li>
+        </ul>
+        <p class="part-done">Підготовку завершено → переходьте до кроку 1</p>
+      </section>
+
+      <!-- STEP 1 -->
+      <section class="step" id="s1" data-title="Бот у Telegram">
+        <div class="step-head"><div class="num">1</div><div><h2>Створіть бота в Telegram</h2><div class="step-meta">3 хвилини · у Telegram</div></div></div>
+        <p class="why">Telegram видає ботів через офіційного бота @BotFather. Після створення ви отримаєте токен — ключ, яким програма буде керувати вашим ботом.</p>
+        <ul class="tasks">
+          <li class="task"><input type="checkbox" id="c1-1" aria-label="Готово"><div class="task-body"><span class="t">Знайдіть @BotFather</span><p>У пошуку Telegram введіть <code>BotFather</code>. Обирайте того, що має синю галочку верифікації.</p></div></li>
+          <li class="task"><input type="checkbox" id="c1-2" aria-label="Готово"><div class="task-body"><span class="t">Надішліть йому команду</span>
+            <div class="copyrow"><code>/newbot</code><button class="copybtn" type="button" data-copy="/newbot">Копіювати</button></div></div></li>
+          <li class="task"><input type="checkbox" id="c1-3" aria-label="Готово"><div class="task-body"><span class="t">Напишіть ім'я бота</span><p>Це назва, яку ви бачитимете в списку чатів. Будь-яка, наприклад <b>Мої задачі</b>.</p></div></li>
+          <li class="task"><input type="checkbox" id="c1-4" aria-label="Готово"><div class="task-body"><span class="t">Напишіть username бота</span><p>Латиницею, без пробілів, обов'язково з <code>bot</code> у кінці. Наприклад <code>olena_tasks_bot</code>. Якщо зайнято — BotFather попросить інший, додайте цифри.</p></div></li>
+          <li class="task"><input type="checkbox" id="c1-5" aria-label="Готово"><div class="task-body"><span class="t">Скопіюйте токен у свою нотатку</span><p>BotFather надішле повідомлення з рядком такого вигляду:</p>
+            <div class="copyrow"><code>8123456789:AAH-приклад-токена-xYz</code></div>
+            <p class="hint">Цифри, двокрапка, потім довгий набір літер. Натисніть на нього в Telegram — він скопіюється.</p>
+            <div class="note secret"><span class="ic">!</span><span>Це перший секрет. Збережіть його в нотатку з підпису <b>TELEGRAM_TOKEN</b>.</span></div></div></li>
+          <li class="task"><input type="checkbox" id="c1-6" aria-label="Готово"><div class="task-body"><span class="t">Поки що не натискайте «Start» у своєму боті</span><p class="hint">Бот ще не працює, він не відповість. Ми повернемося до нього в кінці.</p></div></li>
+        </ul>
+        <p class="part-done">Бот створено → крок 2</p>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" id="s2" data-title="Ключ Claude">
+        <div class="step-head"><div class="num">2</div><div><h2>Отримайте ключ Claude</h2><div class="step-meta">7 хвилин · console.anthropic.com</div></div></div>
+        <p class="why">Claude — це штучний інтелект, який перетворює фразу «щоп'ятниці о 9 звіт» на задачу з датою і повтором. Боту потрібен ключ доступу до нього. Оплата — за використання, для особистих задач це центи на місяць.</p>
+        <ul class="tasks">
+          <li class="task"><input type="checkbox" id="c2-1" aria-label="Готово"><div class="task-body"><span class="t">Зареєструйтеся в Anthropic Console</span><p>Відкрийте <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> і створіть акаунт (можна через Google). Це окремий акаунт від звичайного чату Claude, навіть якщо у вас є підписка Claude Pro.</p></div></li>
+          <li class="task"><input type="checkbox" id="c2-2" aria-label="Готово"><div class="task-body"><span class="t">Поповніть баланс</span><p>Ліве меню → <span class="ui">Billing</span> → <span class="ui">Buy credits</span>. Мінімальна сума — $5, її вистачить надовго.</p>
+            <p class="hint">Тут же можна вимкнути автопоповнення (Auto reload), щоб гроші не списувалися без вашого відома.</p></div></li>
+          <li class="task"><input type="checkbox" id="c2-3" aria-label="Готово"><div class="task-body"><span class="t">Створіть ключ</span><p>Ліве меню → <span class="ui">API Keys</span> → <span class="ui">Create Key</span>. Назва — будь-яка, наприклад <code>telegram-bot</code>.</p></div></li>
+          <li class="task"><input type="checkbox" id="c2-4" aria-label="Готово"><div class="task-body"><span class="t">Одразу скопіюйте ключ у нотатку</span><p>Він починається з <code>sk-ant-</code>.</p>
+            <div class="note secret"><span class="ic">!</span><span>Ключ показують <b>лише один раз</b>. Якщо закрили вікно, не скопіювавши — нічого страшного, просто створіть новий. Підпишіть у нотатці: <b>ANTHROPIC_API_KEY</b>.</span></div></div></li>
+        </ul>
+        <p class="part-done">Ключ є → крок 3</p>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" id="s3" data-title="Сховище коду">
+        <div class="step-head"><div class="num">3</div><div><h2>Створіть сховище для коду на GitHub</h2><div class="step-meta">5 хвилин · github.com</div></div></div>
+        <p class="why">GitHub — це місце, де зберігається програма бота. Сервер (крок 6) братиме код саме звідси і сам оновлюватиме бота, коли код зміниться.</p>
+        <ul class="tasks">
+          <li class="task"><input type="checkbox" id="c3-1" aria-label="Готово"><div class="task-body"><span class="t">Зареєструйтеся на GitHub</span><p><a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a> → email, пароль, ім'я користувача. GitHub попросить підтвердити email кодом з листа. Безкоштовного тарифу достатньо.</p></div></li>
+          <li class="task"><input type="checkbox" id="c3-2" aria-label="Готово"><div class="task-body"><span class="t">Відкрийте створення нового сховища</span><p>Перейдіть на <a href="https://github.com/new" target="_blank" rel="noopener">github.com/new</a> (або «+» угорі праворуч → <span class="ui">New repository</span>).</p></div></li>
+          <li class="task"><input type="checkbox" id="c3-3" aria-label="Готово"><div class="task-body"><span class="t">Заповніть форму</span>
+            <ol>
+              <li><b>Repository name</b>:
+                <div class="copyrow" style="margin-top:6px"><code>reminder-bot</code><button class="copybtn" type="button" data-copy="reminder-bot">Копіювати</button></div></li>
+              <li><b>Choose visibility</b>: оберіть <span class="ui">Private</span> — код бачитимете лише ви.</li>
+              <li>Решту залиште як є.</li>
+            </ol></div></li>
+          <li class="task"><input type="checkbox" id="c3-4" aria-label="Готово"><div class="task-body"><span class="t">Натисніть <span class="ui">Create repository</span></span><p class="hint">Відкриється порожня сторінка з написом «Quick setup». Не закривайте її — на наступному кроці додамо туди файли.</p></div></li>
+        </ul>
+        <p class="part-done">Сховище створено → крок 4</p>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="step" id="s4" data-title="Файли бота">
+        <div class="step-head"><div class="num">4</div><div><h2>Додайте три файли бота</h2><div class="step-meta">10 хвилин · github.com</div></div></div>
+        <p class="why">Бот — це три текстові файли. Ви створите кожен прямо на сайті GitHub: введете назву файлу, вставите вміст кнопкою «Копіювати» і збережете. Код уже готовий і перевірений, нічого в ньому міняти не треба.</p>
+
+        <div class="note info" style="margin-bottom:14px"><span class="ic">i</span><span><b>Як створити файл на GitHub.</b> На сторінці сховища натисніть посилання <span class="ui">creating a new file</span> (у порожньому сховищі) або кнопку <span class="ui">Add file</span> → <span class="ui">Create new file</span>. Угорі в полі «Name your file…» впишіть назву файлу, нижче у велике поле вставте вміст (<kbd>Ctrl</kbd>+<kbd>V</kbd>, на Mac <kbd>Cmd</kbd>+<kbd>V</kbd>). Потім зелена кнопка <span class="ui">Commit changes…</span> і ще раз <span class="ui">Commit changes</span> у віконці.</span></div>
+
+        <ul class="tasks">
+          <li class="task"><input type="checkbox" id="c4-1" aria-label="Готово"><div class="task-body"><span class="t">Файл 1 з 3: <code>requirements.txt</code></span><p class="hint">Список бібліотек, які сервер встановить для бота.</p>
+            <div class="copyrow"><code>requirements.txt</code><button class="copybtn" type="button" data-copy="requirements.txt">Копіювати назву</button></div>
+            <div class="file"><div class="file-head"><span class="fname">requirements.txt</span><span class="fsize">4 рядки</span><span class="sp"></span><button class="btn" type="button" data-copy-file="f-req">Копіювати вміст</button></div>
+            <pre class="code short" id="f-req">python-telegram-bot[job-queue]&gt;=21.0,&lt;23
+anthropic&gt;=0.40
+python-dateutil&gt;=2.8
+tzdata</pre></div></div></li>
+
+          <li class="task"><input type="checkbox" id="c4-2" aria-label="Готово"><div class="task-body"><span class="t">Файл 2 з 3: <code>Procfile</code></span><p class="hint">Підказка серверу, як запускати бота. Назва саме така: з великої літери, без крапки й розширення.</p>
+            <div class="copyrow"><code>Procfile</code><button class="copybtn" type="button" data-copy="Procfile">Копіювати назву</button></div>
+            <div class="file"><div class="file-head"><span class="fname">Procfile</span><span class="fsize">1 рядок</span><span class="sp"></span><button class="btn" type="button" data-copy-file="f-proc">Копіювати вміст</button></div>
+            <pre class="code short" id="f-proc">worker: python bot.py</pre></div></div></li>
+
+          <li class="task"><input type="checkbox" id="c4-3" aria-label="Готово"><div class="task-body"><span class="t">Файл 3 з 3: <code>bot.py</code> — сама програма</span><p class="hint">Найдовший файл (489 рядків). Обов'язково натискайте кнопку «Копіювати вміст», а не виділяйте мишкою — так нічого не загубиться.</p>
+            <div class="copyrow"><code>bot.py</code><button class="copybtn" type="button" data-copy="bot.py">Копіювати назву</button></div>
+            <div class="file collapsed" id="botfile"><div class="file-head"><span class="fname">bot.py</span><span class="fsize">489 рядків</span><span class="sp"></span><button class="btn sec" type="button" id="toggleBot">Показати весь код</button><button class="btn" type="button" data-copy-file="f-bot">Копіювати вміст</button></div>
+            <div style="position:relative"><pre class="code" id="f-bot">"""
+Особистий Telegram-бот-нагадувалка.
+Задачі пишуться звичайним текстом, Claude перетворює їх на задачі з датою і повтором.
+"""
+import os
+import logging
+import sqlite3
+from collections import Counter
+from datetime import datetime, timedelta, time as dtime
+from zoneinfo import ZoneInfo
+
+from anthropic import AsyncAnthropic
+from dateutil.rrule import rrulestr
+from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters,
+)
+
+# ---------- Налаштування (можна змінювати через змінні середовища) ----------
+TZ = ZoneInfo(os.getenv("TZ_NAME", "Europe/Warsaw"))
+DB_PATH = os.getenv("DB_PATH", "tasks.db")
+MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+REPEAT_EVERY = timedelta(hours=float(os.getenv("REPEAT_HOURS", "2")))  # повтор нагадування
+QUIET_FROM = int(os.getenv("QUIET_FROM", "22"))   # з цієї години повтори не надсилаємо
+QUIET_TO = int(os.getenv("QUIET_TO", "8"))        # до цієї години повтори не надсилаємо
+MORNING_HOUR = int(os.getenv("MORNING_HOUR", "8"))
+EVENING_HOUR = int(os.getenv("EVENING_HOUR", "21"))
+WEEKLY_HOUR = int(os.getenv("WEEKLY_HOUR", "20"))  # підсумки тижня — у неділю
+DEFAULT_HOUR = 10                                  # якщо час задачі не вказано
+FMT = "%Y-%m-%d %H:%M"
+WEEKDAYS = ["понеділок", "вівторок", "середа", "четвер", "пʼятниця", "субота", "неділя"]
+
+client = AsyncAnthropic()  # бере ключ з ANTHROPIC_API_KEY
+
+
+def now() -&gt; datetime:
+    return datetime.now(TZ).replace(tzinfo=None, second=0, microsecond=0)
+
+
+def parse_dt(s: str) -&gt; datetime:
+    return datetime.strptime(s.replace("T", " ")[:16], FMT)
+
+
+# ---------- База даних ----------
+def db():
+    con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row
+    return con
+
+
+def init_db():
+    folder = os.path.dirname(DB_PATH)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    with db() as con:
+        con.executescript("""
+        CREATE TABLE IF NOT EXISTS tasks(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            due_at TEXT NOT NULL,
+            rrule TEXT,
+            repeat_text TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            last_reminded_at TEXT,
+            created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS history(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER, title TEXT, action TEXT, at TEXT);
+        CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+        """)
+
+
+def get_owner():
+    if os.getenv("OWNER_ID"):
+        return int(os.environ["OWNER_ID"])
+    with db() as con:
+        r = con.execute("SELECT value FROM settings WHERE key='owner'").fetchone()
+    return int(r["value"]) if r else None
+
+
+def set_owner(uid: int):
+    with db() as con:
+        con.execute("INSERT OR REPLACE INTO settings VALUES('owner', ?)", (str(uid),))
+
+
+def is_owner(update: Update) -&gt; bool:
+    return bool(update.effective_user) and update.effective_user.id == get_owner()
+
+
+def active_tasks():
+    with db() as con:
+        return con.execute("SELECT * FROM tasks WHERE status='active' ORDER BY due_at").fetchall()
+
+
+def get_task(tid):
+    with db() as con:
+        return con.execute("SELECT * FROM tasks WHERE id=?", (tid,)).fetchone()
+
+
+def log(task, action):
+    with db() as con:
+        con.execute("INSERT INTO history(task_id, title, action, at) VALUES(?,?,?,?)",
+                    (task["id"], task["title"], action, now().strftime(FMT)))
+
+
+# ---------- Логіка задач ----------
+def next_occurrence(rule: str, after: datetime):
+    r = rrulestr(rule, dtstart=after)
+    nxt = r.after(after)
+    while nxt and nxt &lt;= now():
+        nxt = r.after(nxt)
+    return nxt
+
+
+def fmt_due(s: str) -&gt; str:
+    d = parse_dt(s)
+    today = now().date()
+    if d.date() == today:
+        day = "сьогодні"
+    elif d.date() == today + timedelta(days=1):
+        day = "завтра"
+    elif d.date() == today - timedelta(days=1):
+        day = "вчора"
+    else:
+        day = d.strftime("%d.%m")
+    return f"{day} {d.strftime('%H:%M')}"
+
+
+def task_line(t) -&gt; str:
+    warn = "⚠️ " if parse_dt(t["due_at"]) &lt;= now() else ""
+    rep = f" 🔁 {t['repeat_text']}" if t["rrule"] and t["repeat_text"] else (" 🔁" if t["rrule"] else "")
+    return f"• {warn}{t['title']} — {fmt_due(t['due_at'])}{rep}"
+
+
+def complete(t, action="done") -&gt; str:
+    """Зроблено/пропущено. Регулярна задача переїжджає на наступну дату."""
+    log(t, action)
+    with db() as con:
+        if t["rrule"]:
+            nxt = next_occurrence(t["rrule"], parse_dt(t["due_at"]))
+            if nxt:
+                con.execute("UPDATE tasks SET due_at=?, last_reminded_at=NULL WHERE id=?",
+                            (nxt.strftime(FMT), t["id"]))
+                return f"Наступного разу: {fmt_due(nxt.strftime(FMT))}"
+        con.execute("UPDATE tasks SET status=? WHERE id=?",
+                    ("done" if action == "done" else "cancelled", t["id"]))
+    return ""
+
+
+def delete(t):
+    log(t, "deleted")
+    with db() as con:
+        con.execute("UPDATE tasks SET status='cancelled' WHERE id=?", (t["id"],))
+
+
+def snooze(t, when: datetime):
+    log(t, "snoozed")
+    with db() as con:
+        con.execute("UPDATE tasks SET due_at=?, last_reminded_at=NULL WHERE id=?",
+                    (when.strftime(FMT), t["id"]))
+
+
+def list_text(only_today=False) -&gt; str:
+    ts = active_tasks()
+    if only_today:
+        ts = [t for t in ts if parse_dt(t["due_at"]).date() &lt;= now().date()]
+    if not ts:
+        return "На сьогодні задач немає 🎉" if only_today else "Задач немає 🎉"
+    return "\n".join(task_line(t) for t in ts)
+
+
+def keyboard(t):
+    last = (InlineKeyboardButton("⏭ Пропустити раз", callback_data=f"skip:{t['id']}") if t["rrule"]
+            else InlineKeyboardButton("❌ Видалити", callback_data=f"del:{t['id']}"))
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Зроблено", callback_data=f"done:{t['id']}")],
+        [InlineKeyboardButton("⏰ +1 година", callback_data=f"h1:{t['id']}"),
+         InlineKeyboardButton("🌙 Увечері", callback_data=f"ev:{t['id']}"),
+         InlineKeyboardButton("📅 Завтра", callback_data=f"tm:{t['id']}")],
+        [last],
+    ])
+
+
+# ---------- Розбір тексту через Claude ----------
+TOOL = {
+    "name": "apply_actions",
+    "description": "Дії із задачами користувача",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "actions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string",
+                                 "enum": ["create", "update", "delete", "done", "list", "clarify", "chat"]},
+                        "task_id": {"type": "integer"},
+                        "title": {"type": "string"},
+                        "due_at": {"type": "string", "description": "YYYY-MM-DD HH:MM, місцевий час"},
+                        "rrule": {"type": "string", "description": "iCal RRULE без DTSTART або порожній рядок"},
+                        "repeat_text": {"type": "string", "description": "Повтор словами: 'щомісяця 10-го'"},
+                        "text": {"type": "string", "description": "Текст відповіді для clarify/chat"},
+                    },
+                    "required": ["type"],
+                },
+            }
+        },
+        "required": ["actions"],
+    },
+}
+
+
+def system_prompt() -&gt; str:
+    n = now()
+    tasks = "\n".join(
+        f"id={t['id']}: {t['title']} | {t['due_at']} | {t['rrule'] or 'разова'}" for t in active_tasks()
+    ) or "(задач немає)"
+    return f"""Ти — особистий асистент-нагадувалка в Telegram. Зараз {n.strftime(FMT)}, {WEEKDAYS[n.weekday()]}.
+Розбери повідомлення користувача і виклич apply_actions.
+
+Правила:
+- create — нова задача. title коротко, з великої літери, без дати. due_at — коли нагадати вперше.
+  Час не вказано → {DEFAULT_HOUR:02d}:00. Дату не вказано → сьогодні (якщо час уже минув — завтра).
+- Регулярна задача: заповни rrule (iCal RRULE без DTSTART), ЗАВЖДИ з BYHOUR і BYMINUTE;
+  для щотижневих — BYDAY, для щомісячних — BYMONTHDAY. due_at — найближче майбутнє настання.
+  repeat_text — повтор словами. Для разових задач rrule і repeat_text — порожні рядки.
+- update — змінити наявну задачу: task_id і тільки змінені поля.
+- delete — видалити задачу, done — позначити виконаною (потрібен task_id).
+- list — користувач хоче побачити задачі.
+- clarify — якщо незрозуміло, що зробити або коли; коротке питання в text.
+- chat — повідомлення не про задачі; коротка відповідь у text.
+- В одному повідомленні може бути кілька задач — поверни кілька дій.
+- title, repeat_text і text пиши мовою користувача; за замовчуванням — українською.
+
+Поточні задачі:
+{tasks}"""
+
+
+def apply(a: dict) -&gt; str:
+    typ = a.get("type")
+    if typ in ("clarify", "chat"):
+        return a.get("text", "")
+    if typ == "list":
+        return list_text()
+
+    if typ == "create":
+        try:
+            due = parse_dt(a["due_at"])
+        except Exception:
+            return "Не вдалося зрозуміти дату — уточніть, будь ласка."
+        rule = (a.get("rrule") or "").strip() or None
+        if rule:
+            try:
+                rrulestr(rule, dtstart=due)
+            except Exception:
+                return f"Не вдалося зрозуміти повтор для «{a.get('title')}» — переформулюйте, будь ласка."
+        with db() as con:
+            cur = con.execute(
+                "INSERT INTO tasks(title, due_at, rrule, repeat_text, created_at) VALUES(?,?,?,?,?)",
+                (a.get("title") or "Задача", due.strftime(FMT), rule,
+                 (a.get("repeat_text") or "").strip() or None, now().strftime(FMT)))
+        return "✅ Додано:\n" + task_line(get_task(cur.lastrowid))
+
+    t = get_task(a.get("task_id"))
+    if not t or t["status"] != "active":
+        return "Не знаходжу такої задачі. Подивитися список — /list"
+
+    if typ == "update":
+        fields = {}
+        if a.get("title"):
+            fields["title"] = a["title"]
+        if a.get("due_at"):
+            try:
+                fields["due_at"] = parse_dt(a["due_at"]).strftime(FMT)
+                fields["last_reminded_at"] = None
+            except Exception:
+                return "Не вдалося зрозуміти нову дату."
+        if "rrule" in a:
+            fields["rrule"] = (a["rrule"] or "").strip() or None
+            fields["repeat_text"] = (a.get("repeat_text") or "").strip() or None
+        if fields:
+            sets = ", ".join(f"{k}=?" for k in fields)
+            with db() as con:
+                con.execute(f"UPDATE tasks SET {sets} WHERE id=?", (*fields.values(), t["id"]))
+        return "✏️ Змінено:\n" + task_line(get_task(t["id"]))
+    if typ == "delete":
+        delete(t)
+        return f"🗑 Видалено: {t['title']}"
+    if typ == "done":
+        note = complete(t)
+        return f"✅ Позначено: {t['title']}" + (f"\n{note}" if note else "")
+    return ""
+
+
+# ---------- Обробники Telegram ----------
+HELP = (
+    "Просто пишіть задачі звичайним текстом:\n"
+    "• «завтра о 15:00 написати клієнту»\n"
+    "• «щомісяця 10-го оплатити оренду»\n"
+    "• «щопонеділка о 9 звіт»\n"
+    "• «перенеси оренду на 12-те», «видали звіт», «оренду оплатила»\n\n"
+    f"Якщо не натиснути «Зроблено», нагадаю знову через {REPEAT_EVERY.seconds // 3600 or 1} год "
+    f"(вночі з {QUIET_FROM}:00 до {QUIET_TO}:00 мовчу).\n"
+    f"Зведення: зранку о {MORNING_HOUR}:00, увечері о {EVENING_HOUR}:00, підсумки тижня — у неділю.\n\n"
+    "/today — на сьогодні, /list — усі задачі"
+)
+
+
+async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    owner = get_owner()
+    if owner is None:
+        set_owner(update.effective_user.id)
+    elif owner != update.effective_user.id:
+        await update.message.reply_text("Це особистий бот.")
+        return
+    await update.message.reply_text("Привіт! Я стежу за вашими задачами.\n\n" + HELP)
+
+
+async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if is_owner(update):
+        await update.message.reply_text(HELP)
+
+
+async def cmd_list(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if is_owner(update):
+        await update.message.reply_text("📋 Усі задачі:\n" + list_text())
+
+
+async def cmd_today(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if is_owner(update):
+        await update.message.reply_text("📅 На сьогодні:\n" + list_text(only_today=True))
+
+
+async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not is_owner(update):
+        return
+    text = update.message.text
+    hist = ctx.chat_data.setdefault("hist", [])
+    msgs = []
+    for u, r in hist[-4:]:
+        msgs += [{"role": "user", "content": u}, {"role": "assistant", "content": r}]
+    msgs.append({"role": "user", "content": text})
+    try:
+        resp = await client.messages.create(
+            model=MODEL, max_tokens=1024, system=system_prompt(), messages=msgs,
+            tools=[TOOL], tool_choice={"type": "tool", "name": "apply_actions"})
+        block = next(b for b in resp.content if b.type == "tool_use")
+        replies = [apply(a) for a in block.input.get("actions", [])]
+    except Exception:
+        logging.exception("Помилка розбору")
+        replies = ["Не вдалося обробити повідомлення, спробуйте ще раз."]
+    reply = "\n\n".join(r for r in replies if r) or "Готово."
+    hist.append((text, reply))
+    del hist[:-4]
+    await update.message.reply_text(reply)
+
+
+async def on_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    if not is_owner(update):
+        await q.answer()
+        return
+    act, tid = q.data.split(":")
+    t = get_task(int(tid))
+    if not t or t["status"] != "active":
+        await q.answer("Задачу вже закрито")
+        await q.edit_message_reply_markup(None)
+        return
+    n = now()
+    if act == "done":
+        note = complete(t)
+        msg = f"✅ {t['title']}" + (f"\n{note}" if note else "")
+    elif act == "skip":
+        note = complete(t, "skipped")
+        msg = f"⏭ Пропущено: {t['title']}" + (f"\n{note}" if note else "")
+    elif act == "del":
+        delete(t)
+        msg = f"🗑 Видалено: {t['title']}"
+    else:
+        if act == "h1":
+            when = n + timedelta(hours=1)
+        elif act == "ev":
+            day = n if n.hour &lt; 19 else n + timedelta(days=1)
+            when = day.replace(hour=19, minute=0)
+        else:
+            when = (n + timedelta(days=1)).replace(hour=DEFAULT_HOUR, minute=0)
+        snooze(t, when)
+        msg = f"⏰ {t['title']} — нагадаю {fmt_due(when.strftime(FMT))}"
+    await q.answer()
+    await q.edit_message_text(msg)
+
+
+# ---------- Фонові завдання ----------
+async def tick(ctx: ContextTypes.DEFAULT_TYPE):
+    """Щохвилини: надсилає нагадування про задачі, час яких настав."""
+    owner = get_owner()
+    if not owner:
+        return
+    n = now()
+    quiet = n.hour &gt;= QUIET_FROM or n.hour &lt; QUIET_TO
+    for t in active_tasks():
+        try:
+            if parse_dt(t["due_at"]) &gt; n:
+                continue
+            if t["last_reminded_at"] is None:
+                text = f"🔔 {t['title']}"
+            else:
+                if quiet or n - parse_dt(t["last_reminded_at"]) &lt; REPEAT_EVERY:
+                    continue
+                text = f"🔔 Нагадую ще раз: {t['title']}\n(з {fmt_due(t['due_at'])})"
+            await ctx.bot.send_message(owner, text, reply_markup=keyboard(t))
+            with db() as con:
+                con.execute("UPDATE tasks SET last_reminded_at=? WHERE id=?", (n.strftime(FMT), t["id"]))
+        except Exception:
+            logging.exception("Помилка нагадування")
+
+
+async def morning(ctx: ContextTypes.DEFAULT_TYPE):
+    owner = get_owner()
+    if owner:
+        await ctx.bot.send_message(owner, "☀️ Доброго ранку! План на сьогодні:\n" + list_text(only_today=True))
+
+
+async def evening(ctx: ContextTypes.DEFAULT_TYPE):
+    owner = get_owner()
+    if not owner:
+        return
+    overdue = [t for t in active_tasks() if parse_dt(t["due_at"]) &lt;= now()]
+    if overdue:
+        text = ("🌙 Поки не зроблено:\n" + "\n".join(task_line(t) for t in overdue) +
+                "\n\nМожна написати, що перенести, наприклад «оренду на завтра».")
+    else:
+        text = "🌙 На сьогодні все зроблено 👏"
+    await ctx.bot.send_message(owner, text)
+
+
+async def weekly(ctx: ContextTypes.DEFAULT_TYPE):
+    owner = get_owner()
+    if not owner or now().weekday() != 6:  # тільки неділя
+        return
+    since = (now() - timedelta(days=7)).strftime(FMT)
+    with db() as con:
+        rows = con.execute("SELECT title, action FROM history WHERE at &gt;= ?", (since,)).fetchall()
+    done = Counter(r["title"] for r in rows if r["action"] == "done")
+    snoozed = Counter(r["title"] for r in rows if r["action"] == "snoozed").most_common(3)
+    overdue = [t for t in active_tasks() if parse_dt(t["due_at"]) &lt;= now()]
+    parts = [f"📊 Підсумки тижня\n\n✅ Зроблено: {sum(done.values())}"]
+    if done:
+        parts[0] += "\n" + "\n".join(f"• {k}" + (f" ×{v}" if v &gt; 1 else "") for k, v in done.most_common(15))
+    if snoozed:
+        parts.append("⏰ Найчастіше відкладали:\n" + "\n".join(f"• {k} ×{v}" for k, v in snoozed))
+    if overdue:
+        parts.append("⚠️ Досі чекають:\n" + "\n".join(task_line(t) for t in overdue))
+    await ctx.bot.send_message(owner, "\n\n".join(parts))
+
+
+async def post_init(app: Application):
+    await app.bot.set_my_commands([
+        BotCommand("today", "Задачі на сьогодні"),
+        BotCommand("list", "Усі задачі"),
+        BotCommand("help", "Як користуватися"),
+    ])
+
+
+def main():
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # не писати в логи адреси запитів (у них токен бота) і щохвилинний шум планувальника
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
+    init_db()
+    app = Application.builder().token(os.environ["TELEGRAM_TOKEN"]).post_init(post_init).build()
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("list", cmd_list))
+    app.add_handler(CommandHandler("today", cmd_today))
+    app.add_handler(CallbackQueryHandler(on_button))
+    app.add_handler(MessageHandler(filters.TEXT &amp; ~filters.COMMAND, on_text))
+
+    jq = app.job_queue
+    jq.run_repeating(tick, interval=60, first=10)
+    jq.run_daily(morning, dtime(MORNING_HOUR, 0, tzinfo=TZ))
+    jq.run_daily(evening, dtime(EVENING_HOUR, 0, tzinfo=TZ))
+    jq.run_daily(weekly, dtime(WEEKLY_HOUR, 0, tzinfo=TZ))
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()</pre><div class="fade"></div></div></div>
+            <p class="hint">Перевірка: після збереження відкрийте файл на GitHub і прокрутіть донизу. Останній рядок має бути <code>main()</code>, а над ним <code>if __name__ == "__main__":</code>.</p></div></li>
+
+          <li class="task"><input type="checkbox" id="c4-4" aria-label="Готово"><div class="task-body"><span class="t">Перевірте, що в сховищі три файли</span><p>На головній сторінці сховища мають бути видні: <code>Procfile</code>, <code>bot.py</code>, <code>requirements.txt</code>. Назви — точно такі, з тими самими великими й малими літерами.</p></div></li>
+        </ul>
+        <p class="part-done">Код на місці → крок 5</p>
+      </section>
+
+      <!-- STEP 5 -->
+      <section class="step" id="s5" data-title="Налаштування">
+        <div class="step-head"><div class="num">5</div><div><h2>Налаштуйте бота під себе</h2><div class="step-meta">2 хвилини · тут, на цій сторінці</div></div></div>
+        <p class="why">Оберіть свій часовий пояс і зручний розклад. Внизу автоматично зберуться налаштування, які на наступному кроці ви вставите на сервер одним блоком. Значення можна змінити й пізніше.</p>
+        <div class="config" id="config">
+          <div class="field"><label for="cfgTz">Часовий пояс</label>
+            <select id="cfgTz">
+              <option value="Europe/Kyiv">Україна (Київ)</option>
+              <option value="Europe/Warsaw">Польща (Варшава)</option>
+              <option value="Europe/Berlin">Німеччина, Австрія, Чехія</option>
+              <option value="Europe/Rome">Італія, Іспанія, Франція</option>
+              <option value="Europe/London">Велика Британія, Ірландія</option>
+              <option value="Europe/Lisbon">Португалія</option>
+              <option value="Europe/Riga">Латвія, Литва, Естонія</option>
+              <option value="Europe/Bucharest">Румунія, Молдова, Болгарія</option>
+              <option value="Asia/Dubai">ОАЕ</option>
+              <option value="America/New_York">США, схід (Нью-Йорк)</option>
+              <option value="America/Los_Angeles">США, захід (Лос-Анджелес)</option>
+              <option value="America/Toronto">Канада (Торонто)</option>
+            </select>
+            <small>Літній і зимовий час бот враховує сам.</small></div>
+          <div class="field"><label for="cfgRepeat">Нагадувати повторно, якщо не натиснули «Зроблено»</label>
+            <select id="cfgRepeat"><option value="1">щогодини</option><option value="2" selected>кожні 2 години</option><option value="3">кожні 3 години</option><option value="4">кожні 4 години</option><option value="6">кожні 6 годин</option></select></div>
+          <div class="field"><label for="cfgMorning">Ранковий план на день</label><select id="cfgMorning"></select></div>
+          <div class="field"><label for="cfgEvening">Вечірній список незробленого</label><select id="cfgEvening"></select></div>
+          <div class="field"><label for="cfgQuietFrom">Нічна тиша: не повторювати з</label><select id="cfgQuietFrom"></select></div>
+          <div class="field"><label for="cfgQuietTo">…до</label><select id="cfgQuietTo"></select><small>Перше нагадування в призначений час прийде завжди, тиша стосується тільки повторів.</small></div>
+          <div class="field"><label for="cfgWeekly">Підсумки тижня (у неділю)</label><select id="cfgWeekly"></select></div>
+          <div class="envbox field">
+            <label>Ваш блок налаштувань</label>
+            <pre class="env" id="envOut"></pre>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" type="button" id="copyEnv">Копіювати блок</button></div>
+            <small>Два жовті рядки ви заміните своїми секретами вже на сервері, у кроці 6. Сюди їх не вводьте.</small>
+          </div>
+        </div>
+        <ul class="tasks" style="margin-top:12px">
+          <li class="task"><input type="checkbox" id="c5-1" aria-label="Готово"><div class="task-body"><span class="t">Я обрала налаштування і скопіювала блок</span><p class="hint">Якщо скопіювали щось інше в проміжку — нічого страшного, повернетеся сюди й натиснете «Копіювати блок» ще раз.</p></div></li>
+        </ul>
+        <p class="part-done">Налаштування готові → крок 6</p>
+      </section>
+
+      <!-- STEP 6 -->
+      <section class="step" id="s6" data-title="Запуск на сервері">
+        <div class="step-head"><div class="num">6</div><div><h2>Запустіть бота на сервері Railway</h2><div class="step-meta">15 хвилин · railway.com</div></div></div>
+        <p class="why">Railway — сервіс, де бот працюватиме 24/7, навіть коли ваш комп'ютер вимкнений. Ви підключите туди сховище з GitHub, додасте налаштування і місце для збереження задач.</p>
+        <ul class="tasks">
+          <li class="task"><input type="checkbox" id="c6-1" aria-label="Готово"><div class="task-body"><span class="t">Увійдіть у Railway через GitHub</span><p>Відкрийте <a href="https://railway.com" target="_blank" rel="noopener">railway.com</a> → <span class="ui">Login</span> → <span class="ui">Continue with GitHub</span> → дозвольте доступ. Погодьтеся з умовами, якщо попросять.</p>
+            <p class="hint">Новим користувачам дають пробний період (Trial) з невеликим бюджетом. Для старту цього достатньо, оплату налаштуєте пізніше (див. «Скільки це коштує»).</p></div></li>
+          <li class="task"><input type="checkbox" id="c6-2" aria-label="Готово"><div class="task-body"><span class="t">Створіть проект з вашого сховища</span>
+            <ol>
+              <li><span class="ui">New Project</span> (або <a href="https://railway.com/new" target="_blank" rel="noopener">railway.com/new</a>) → <span class="ui">GitHub Repository</span>.</li>
+              <li>Якщо список порожній — натисніть <span class="ui">Configure GitHub App</span>. Відкриється вікно GitHub: оберіть <span class="ui">Only select repositories</span>, позначте <code>reminder-bot</code> → <span class="ui">Install</span> (або <span class="ui">Save</span>). Закрийте вікно, якщо не закрилося саме.</li>
+              <li>Знову <span class="ui">New Project</span> → <span class="ui">GitHub Repository</span> → оберіть <code>reminder-bot</code>.</li>
+            </ol>
+            <p class="hint">З'явиться картка сервісу з назвою <b>worker</b>. Railway одразу спробує запустити бота і, найімовірніше, покаже помилку — це нормально, бо ще немає налаштувань.</p></div></li>
+          <li class="task"><input type="checkbox" id="c6-3" aria-label="Готово"><div class="task-body"><span class="t">Вставте налаштування</span>
+            <ol>
+              <li>Натисніть на картку <b>worker</b> → вкладка <span class="ui">Variables</span>.</li>
+              <li>Натисніть <span class="ui">Raw Editor</span> (посилання в середині сторінки або кнопка з фігурними дужками <code>{}</code>).</li>
+              <li>Вставте блок із кроку 5.</li>
+              <li>У рядку <code>TELEGRAM_TOKEN=</code> замініть <code>вставте_токен_бота</code> на ваш токен з нотатки. У рядку <code>ANTHROPIC_API_KEY=</code> — на ваш ключ. Без пробілів і лапок.</li>
+              <li><span class="ui">Update Variables</span> (або <span class="ui">Save</span>).</li>
+            </ol>
+            <div class="note warn"><span class="ic">!</span><span>Перевірте, що після знака <code>=</code> немає пробілу і що токен вставлено повністю, разом із частиною перед двокрапкою.</span></div>
+            <button class="btn sec" type="button" data-jump="s5" style="align-self:flex-start">Повернутися до блоку налаштувань</button></div></li>
+          <li class="task"><input type="checkbox" id="c6-4" aria-label="Готово"><div class="task-body"><span class="t">Додайте сховище для задач (Volume)</span>
+            <p>Без нього бот «забуватиме» всі задачі при кожному оновленні.</p>
+            <ol>
+              <li>Натисніть <kbd>Ctrl</kbd>+<kbd>K</kbd> (на Mac <kbd>Cmd</kbd>+<kbd>K</kbd>) і почніть вводити <code>volume</code>. Або клацніть правою кнопкою на порожньому місці полотна проекту → <span class="ui">Volume</span>.</li>
+              <li>Оберіть <span class="ui">Volume</span>, потім сервіс <b>worker</b>.</li>
+              <li>Mount path (шлях):
+                <div class="copyrow" style="margin-top:6px"><code>/data</code><button class="copybtn" type="button" data-copy="/data">Копіювати</button></div></li>
+              <li>Підтвердіть (<kbd>Enter</kbd>). Має з'явитися «Created volume successfully».</li>
+            </ol></div></li>
+          <li class="task"><input type="checkbox" id="c6-5" aria-label="Готово"><div class="task-body"><span class="t">Застосуйте зміни</span><p>Унизу з'явиться смуга «Apply N changes» — натисніть фіолетову кнопку <span class="ui">Deploy</span>. Railway перезапустить бота з налаштуваннями і сховищем. Це займає 1–3 хвилини.</p></div></li>
+          <li class="task"><input type="checkbox" id="c6-6" aria-label="Готово"><div class="task-body"><span class="t">Переконайтеся, що бот запустився</span>
+            <p>На картці <b>worker</b> → <span class="ui">Deployments</span>: останній запуск має позначку <b>ACTIVE</b> і «Deployment successful». Для певності відкрийте журнал: кнопка <span class="ui">View logs</span> або вкладка <span class="ui">Logs</span> проекту. Шукайте рядок:</p>
+            <div class="copyrow"><code>INFO Application started</code></div>
+            <p class="hint">Бачите червоні рядки з Error? Дивіться розділ «Якщо щось не працює» нижче — там розібрані типові помилки.</p></div></li>
+        </ul>
+        <p class="part-done">Бот працює на сервері → останній крок</p>
+      </section>
+
+      <!-- STEP 7 -->
+      <section class="step" id="s7" data-title="Перший запуск">
+        <div class="step-head"><div class="num">7</div><div><h2>Познайомтеся з ботом</h2><div class="step-meta">3 хвилини · у Telegram</div></div></div>
+        <p class="why">Бот особистий: він слухається тільки того, хто першим натисне «Start». Тому зробіть це одразу, щойно бот запустився.</p>
+        <ul class="tasks">
+          <li class="task"><input type="checkbox" id="c7-1" aria-label="Готово"><div class="task-body"><span class="t">Відкрийте свого бота і натисніть <span class="ui">Start</span></span><p>Знайдіть його за username з кроку 1 (або за посиланням <code>t.me/ваш_username_bot</code>, яке надіслав BotFather). Бот привітається і пояснить, як ним користуватися.</p></div></li>
+          <li class="task"><input type="checkbox" id="c7-2" aria-label="Готово"><div class="task-body"><span class="t">Поставте пробну задачу</span>
+            <div class="copyrow"><code>через 2 хвилини перевірити бота</code><button class="copybtn" type="button" data-copy="через 2 хвилини перевірити бота">Копіювати</button></div>
+            <p class="hint">Бот має відповісти «✅ Додано». Якщо відповів «Не вдалося обробити повідомлення» — проблема з ключем Claude, див. нижче.</p></div></li>
+          <li class="task"><input type="checkbox" id="c7-3" aria-label="Готово"><div class="task-body"><span class="t">Дочекайтеся нагадування і натисніть <span class="ui">✅ Зроблено</span></span><p class="hint">Нагадування надходять із точністю до хвилини. Якщо не натиснути кнопку, бот повторить нагадування через обраний у кроці 5 інтервал.</p></div></li>
+          <li class="task"><input type="checkbox" id="c7-4" aria-label="Готово"><div class="task-body"><span class="t">Закріпіть бота вгорі списку чатів</span><p class="hint">Довге натискання на чат → «Закріпити». Так ранкові плани не загубляться серед інших чатів.</p></div></li>
+        </ul>
+        <p class="part-done">Готово!</p>
+      </section>
+
+      <div class="finale" id="finale">
+        <h2>Ваш бот працює</h2>
+        <p>Тепер просто пишіть йому все, що треба не забути: платежі, дзвінки, звіти, дні народження, регулярні справи. Нижче — шпаргалка і відповіді на часті питання.</p>
+      </div>
+
+      <!-- USE -->
+      <section class="step" id="use" style="margin-top:56px">
+        <div class="step-head"><div class="num">✓</div><div><h2>Як користуватися</h2></div></div>
+        <div class="cheat">
+          <div><div class="k">Разова задача</div>«завтра о 15:00 подзвонити бухгалтеру»<br>«в п'ятницю відправити договір»</div>
+          <div><div class="k">Регулярна задача</div>«щомісяця 10-го оплатити оренду»<br>«щопонеділка о 9 планування тижня»</div>
+          <div><div class="k">Кілька задач одразу</div>«завтра: о 10 зустріч з Анною, о 14 оплатити рахунок»</div>
+          <div><div class="k">Змінити або видалити</div>«перенеси оренду на 12-те»<br>«видали задачу про звіт»</div>
+          <div><div class="k">Відмітити зробленим</div>Кнопка ✅ під нагадуванням або текстом: «оренду оплатила»</div>
+          <div><div class="k">Подивитися список</div>Команди <code>/today</code> — на сьогодні, <code>/list</code> — усі задачі</div>
+          <div><div class="k">Кнопки під нагадуванням</div>✅ зроблено · ⏰ +1 година · 🌙 увечері (19:00) · 📅 завтра (10:00) · ❌ видалити (для регулярних — ⏭ пропустити раз)</div>
+          <div><div class="k">Якщо час не вказано</div>Бот поставить нагадування на 10:00. Якщо не вказано дату — на сьогодні.</div>
+        </div>
+        <p class="hint" style="margin-top:12px">Інтерфейс бота українською. Писати можна будь-якою мовою: бот відповість мовою вашого повідомлення.</p>
+      </section>
+
+      <!-- TROUBLE -->
+      <section class="step" id="trouble">
+        <div class="step-head"><div class="num">?</div><div><h2>Якщо щось не працює</h2></div></div>
+        <details class="qa"><summary>Бот взагалі не відповідає</summary><div class="a">
+          <p>1. Railway → картка <b>worker</b> → <span class="ui">Deployments</span>. Якщо статус <b>FAILED</b> або <b>CRASHED</b> — відкрийте логи.</p>
+          <p>2. У логах <code>KeyError: 'TELEGRAM_TOKEN'</code> — змінна не додана або назва з помилкою. Перевірте вкладку <span class="ui">Variables</span>.</p>
+          <p>3. У логах <code>InvalidToken</code> або <code>401 Unauthorized</code> — токен вставлено неповністю. Скопіюйте його ще раз у @BotFather (<code>/mybots</code> → ваш бот → <span class="ui">API Token</span>).</p>
+          <p>4. Статус ACTIVE, помилок немає, але бот мовчить — переконайтеся, що пишете саме своєму боту (username з кроку 1).</p>
+        </div></details>
+        <details class="qa"><summary>Бот відповідає «Не вдалося обробити повідомлення»</summary><div class="a">
+          <p>Бот працює, але не може звернутися до Claude. Найчастіші причини:</p>
+          <ul><li>не поповнено баланс у console.anthropic.com → <span class="ui">Billing</span>;</li><li>у ключі помилка або зайвий пробіл — створіть новий ключ і замініть значення <code>ANTHROPIC_API_KEY</code> у Railway;</li><li>ключ видалено в консолі.</li></ul>
+          <p>Після зміни змінної Railway сам перезапустить бота (або натисніть <span class="ui">Deploy</span>).</p>
+        </div></details>
+        <details class="qa"><summary>Бот пише «Це особистий бот»</summary><div class="a">
+          <p>Хтось інший встиг натиснути Start першим (або ви з іншого акаунту). Виправлення:</p>
+          <ol><li>Дізнайтеся свій Telegram ID: напишіть боту <code>@userinfobot</code>, він надішле число.</li><li>У Railway → <span class="ui">Variables</span> додайте змінну <code>OWNER_ID</code> зі значенням цього числа.</li><li>Після перезапуску бот слухатиметься тільки вас.</li></ol>
+        </div></details>
+        <details class="qa"><summary>Після оновлення зникли всі задачі</summary><div class="a">
+          <p>Не підключено сховище. Перевірте: у змінних є <code>DB_PATH=/data/tasks.db</code>, а в проекті є Volume з шляхом <code>/data</code>, підключений саме до сервісу <b>worker</b> (крок 6, пункт 4).</p>
+        </div></details>
+        <details class="qa"><summary>Нагадування приходять не в той час</summary><div class="a">
+          <p>Неправильний часовий пояс. У Railway → <span class="ui">Variables</span> змініть <code>TZ_NAME</code> (наприклад, <code>Europe/Kyiv</code>). Задачі, створені раніше, можуть залишитися зі старим часом — просто попросіть бота перенести їх.</p>
+        </div></details>
+        <details class="qa"><summary>Не приходять ранковий план чи вечірнє зведення</summary><div class="a">
+          <p>Зведення приходять лише після того, як ви натиснули Start. Перевірте <code>MORNING_HOUR</code> і <code>EVENING_HOUR</code> у змінних та часовий пояс. Підсумки тижня — лише в неділю.</p>
+        </div></details>
+        <details class="qa"><summary>Як змінити налаштування пізніше</summary><div class="a">
+          <p>Railway → <b>worker</b> → <span class="ui">Variables</span> → змініть значення → <span class="ui">Deploy</span>. Задачі при цьому не зникнуть.</p>
+          <div class="tbl"><table>
+            <thead><tr><th>Змінна</th><th>Що означає</th><th>Приклад</th></tr></thead>
+            <tbody>
+              <tr><td><code>TZ_NAME</code></td><td>часовий пояс</td><td><code>Europe/Kyiv</code></td></tr>
+              <tr><td><code>REPEAT_HOURS</code></td><td>через скільки годин повторювати нагадування</td><td><code>2</code></td></tr>
+              <tr><td><code>QUIET_FROM</code> / <code>QUIET_TO</code></td><td>нічна тиша для повторів (години)</td><td><code>22</code> / <code>8</code></td></tr>
+              <tr><td><code>MORNING_HOUR</code></td><td>ранковий план</td><td><code>8</code></td></tr>
+              <tr><td><code>EVENING_HOUR</code></td><td>вечірнє зведення</td><td><code>21</code></td></tr>
+              <tr><td><code>WEEKLY_HOUR</code></td><td>підсумки тижня в неділю</td><td><code>20</code></td></tr>
+              <tr><td><code>OWNER_ID</code></td><td>ваш Telegram ID (необов'язково)</td><td><code>123456789</code></td></tr>
+            </tbody></table></div>
+        </div></details>
+        <details class="qa"><summary>Я випадково показала комусь токен або ключ</summary><div class="a">
+          <p><b>Токен:</b> у @BotFather надішліть <code>/revoke</code>, оберіть бота — отримаєте новий. Замініть <code>TELEGRAM_TOKEN</code> у Railway.</p>
+          <p><b>Ключ Claude:</b> console.anthropic.com → <span class="ui">API Keys</span> → видаліть старий, створіть новий, замініть <code>ANTHROPIC_API_KEY</code> у Railway.</p>
+        </div></details>
+      </section>
+
+      <!-- COST -->
+      <section class="step" id="cost">
+        <div class="step-head"><div class="num">$</div><div><h2>Скільки це коштує</h2><div class="step-meta">ціни на жовтень 2026, перевіряйте актуальні на сайтах сервісів</div></div></div>
+        <div class="tbl"><table>
+          <thead><tr><th>Що</th><th>Навіщо</th><th>Ціна</th></tr></thead>
+          <tbody>
+            <tr><td>Telegram, GitHub</td><td>сам бот і зберігання коду</td><td class="n">безкоштовно</td></tr>
+            <tr><td>Railway</td><td>сервер, на якому бот працює 24/7</td><td class="n">≈ $5 / міс.</td></tr>
+            <tr><td>Claude (Anthropic)</td><td>розуміння ваших повідомлень</td><td class="n">центи / міс.</td></tr>
+          </tbody></table></div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;max-width:70ch">
+          <p><b>Railway.</b> Спершу діє пробний період (Trial) з невеликим одноразовим бюджетом. Коли він закінчиться, бот зупиниться, тож заздалегідь перейдіть на тариф <b>Hobby</b>: аватар угорі праворуч → <span class="ui">Account Settings</span> → <span class="ui">Plans</span> (або <span class="ui">Billing</span>). Він коштує близько $5 на місяць, і цього з запасом вистачає для такого бота.</p>
+          <p><b>Claude.</b> Бот використовує найекономнішу модель. Одне повідомлення коштує частки цента, тож мінімального поповнення в $5 вистачить на місяці.</p>
+        </div>
+      </section>
+
+      <p class="footer">Інструкцію склала Катерина Могілевська на основі власного бота. Код бота відкритий: можна вільно використовувати для себе. <a href="https://github.com/mogilevskakateryna-lgtm/telegram-reminder-bot" target="_blank" rel="noopener">Код на GitHub</a>.</p>
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY = "reminder-bot-guide-v1";
+  function load(){ try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch(e){ return {}; } }
+  function save(s){ try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} }
+  var state = load();
+  state.checks = state.checks || {};
+
+  /* ---------- toast ---------- */
+  var toastEl = document.getElementById("toast"), toastT;
+  function toast(msg){ toastEl.textContent = msg; toastEl.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove("show"); }, 1800); }
+
+  /* ---------- copy ---------- */
+  function selectNode(node){ try{ var r=document.createRange(); r.selectNodeContents(node); var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);}catch(e){} }
+  function copyText(text, btn, node, label){
+    var done = function(){ var old = btn.textContent; btn.classList.add("ok"); btn.textContent = "Скопійовано"; setTimeout(function(){ btn.classList.remove("ok"); btn.textContent = old; }, 1600); toast(label || "Скопійовано"); };
+    var fail = function(){ if (node) { selectNode(node); toast("Текст виділено — натисніть Ctrl+C (на Mac Cmd+C)"); } else { toast("Не вдалося скопіювати — виділіть текст вручну"); } };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fail); }
+      else fail();
+    } catch(e){ fail(); }
+  }
+  document.addEventListener("click", function(e){
+    var b = e.target.closest("[data-copy]");
+    if (b) { var code = b.parentElement.querySelector("code"); copyText(b.getAttribute("data-copy"), b, code); return; }
+    var f = e.target.closest("[data-copy-file]");
+    if (f) { var pre = document.getElementById(f.getAttribute("data-copy-file")); copyText(pre.textContent, f, pre, "Вміст файлу скопійовано"); return; }
+    var j = e.target.closest("[data-jump]");
+    if (j) { document.getElementById(j.getAttribute("data-jump")).scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"}); }
+  });
+
+  /* ---------- bot.py expand ---------- */
+  var botfile = document.getElementById("botfile"), tb = document.getElementById("toggleBot");
+  tb.addEventListener("click", function(){ var c = botfile.classList.toggle("collapsed"); tb.textContent = c ? "Показати весь код" : "Згорнути код"; });
+
+  /* ---------- progress ---------- */
+  var steps = Array.prototype.slice.call(document.querySelectorAll("section.step[data-title]"));
+  var boxes = Array.prototype.slice.call(document.querySelectorAll(".task input[type=checkbox]"));
+  var rail = document.getElementById("railList");
+  steps.forEach(function(s, i){
+    var li = document.createElement("li");
+    var a = document.createElement("a"); a.href = "#" + s.id; a.id = "rail-" + s.id;
+    a.innerHTML = '<span class="dot">' + i + '</span><span></span>';
+    a.lastChild.textContent = s.getAttribute("data-title");
+    li.appendChild(a); rail.appendChild(li);
+  });
+  function render(){
+    var total = boxes.length, done = 0;
+    boxes.forEach(function(b){ var on = !!state.checks[b.id]; b.checked = on; b.closest(".task").classList.toggle("checked", on); if (on) done++; });
+    var firstOpen = null;
+    steps.forEach(function(s){
+      var bs = s.querySelectorAll(".task input[type=checkbox]"), all = bs.length > 0;
+      for (var k=0;k<bs.length;k++){ if(!bs[k].checked){ all=false; break; } }
+      s.classList.toggle("is-done", all);
+      var a = document.getElementById("rail-" + s.id);
+      a.classList.toggle("done", all); a.classList.remove("current");
+      if (!all && !firstOpen) firstOpen = a;
+    });
+    if (firstOpen) firstOpen.classList.add("current");
+    var stepsDone = steps.filter(function(s){ return s.classList.contains("is-done"); }).length;
+    document.getElementById("meterFill").style.width = Math.round(done/total*100) + "%";
+    document.getElementById("meterLabel").textContent = stepsDone + " з " + steps.length + " кроків · " + Math.round(done/total*100) + "%";
+  }
+  boxes.forEach(function(b){ b.addEventListener("change", function(){ state.checks[b.id] = b.checked; save(state); var before = b.closest("section").classList.contains("is-done"); render(); if (!before && b.closest("section").classList.contains("is-done")) toast("Крок завершено ✓"); }); });
+  var resetArmed = false, resetBtn = document.getElementById("resetBtn");
+  resetBtn.addEventListener("click", function(){
+    if (!resetArmed) { resetArmed = true; resetBtn.textContent = "Точно скинути галочки?"; setTimeout(function(){ resetArmed=false; resetBtn.textContent="Почати спочатку"; }, 3000); return; }
+    state.checks = {}; save(state); resetArmed=false; resetBtn.textContent="Почати спочатку"; render(); toast("Прогрес скинуто");
+  });
+  render();
+
+  /* ---------- configurator ---------- */
+  function hours(sel, def){ var el=document.getElementById(sel); for (var h=0; h<24; h++){ var o=document.createElement("option"); o.value=h; o.textContent=(h<10?"0":"")+h+":00"; if(h===def) o.selected=true; el.appendChild(o);} }
+  hours("cfgMorning", 8); hours("cfgEvening", 21); hours("cfgQuietFrom", 22); hours("cfgQuietTo", 8); hours("cfgWeekly", 20);
+  var cfgIds = ["cfgTz","cfgRepeat","cfgMorning","cfgEvening","cfgQuietFrom","cfgQuietTo","cfgWeekly"];
+  if (state.cfg) cfgIds.forEach(function(id){ if (state.cfg[id] != null) document.getElementById(id).value = state.cfg[id]; });
+  function v(id){ return document.getElementById(id).value; }
+  function envText(){
+    return [
+      "TELEGRAM_TOKEN=вставте_токен_бота",
+      "ANTHROPIC_API_KEY=вставте_ключ_claude",
+      "DB_PATH=/data/tasks.db",
+      "TZ_NAME=" + v("cfgTz"),
+      "REPEAT_HOURS=" + v("cfgRepeat"),
+      "QUIET_FROM=" + v("cfgQuietFrom"),
+      "QUIET_TO=" + v("cfgQuietTo"),
+      "MORNING_HOUR=" + v("cfgMorning"),
+      "EVENING_HOUR=" + v("cfgEvening"),
+      "WEEKLY_HOUR=" + v("cfgWeekly")
+    ].join("\n");
+  }
+  var envOut = document.getElementById("envOut");
+  function renderEnv(){
+    var lines = envText().split("\n");
+    envOut.innerHTML = "";
+    lines.forEach(function(l, i){
+      var span = document.createElement("span");
+      span.textContent = l + (i < lines.length-1 ? "\n" : "");
+      if (i < 2) span.className = "ph";
+      envOut.appendChild(span);
+    });
+    state.cfg = {}; cfgIds.forEach(function(id){ state.cfg[id] = v(id); }); save(state);
+  }
+  cfgIds.forEach(function(id){ document.getElementById(id).addEventListener("change", renderEnv); });
+  renderEnv();
+  document.getElementById("copyEnv").addEventListener("click", function(e){ copyText(envText(), e.currentTarget, envOut, "Блок налаштувань скопійовано"); });
+
+  /* ---------- chat demo ---------- */
+  var log = document.getElementById("chatLog");
+  function bubble(cls, text, kb){
+    var m = document.createElement("div"); m.className = "msg " + cls; m.textContent = text;
+    if (kb){ var k=document.createElement("div"); k.className="kb";
+      kb.forEach(function(b){ var bt=document.createElement("button"); bt.type="button"; bt.textContent=b[0]; if(b[1]) bt.className="wide";
+        bt.addEventListener("click", function(){ m.textContent = b[2]; }); k.appendChild(bt); });
+      m.appendChild(k); }
+    log.appendChild(m); log.scrollTop = log.scrollHeight;
+  }
+  var reminderKb = [["✅ Зроблено",true,"✅ Оплатити оренду\nНаступного разу: 10.12 10:00"],["⏰ +1 година",false,"⏰ Оплатити оренду — нагадаю сьогодні 11:00"],["🌙 Увечері",false,"⏰ Оплатити оренду — нагадаю сьогодні 19:00"],["📅 Завтра",false,"⏰ Оплатити оренду — нагадаю завтра 10:00"],["⏭ Пропустити раз",true,"⏭ Пропущено: Оплатити оренду\nНаступного разу: 10.12 10:00"]];
+  var demos = [
+    ["щомісяця 10-го оплатити оренду", "✅ Додано:\n• Оплатити оренду — 10.11 10:00 🔁 щомісяця 10-го"],
+    ["завтра о 15:00 написати клієнту", "✅ Додано:\n• Написати клієнту — завтра 15:00"],
+    [null, "🔔 Оплатити оренду", reminderKb],
+    ["що на сьогодні?", "📅 На сьогодні:\n• ⚠️ Оплатити оренду — сьогодні 10:00 🔁\n• Подзвонити бухгалтеру — сьогодні 16:00"]
+  ];
+  bubble("bot", "☀️ Доброго ранку! План на сьогодні:\n• Оплатити оренду — сьогодні 10:00 🔁\n• Подзвонити бухгалтеру — сьогодні 16:00");
+  document.getElementById("chatChips").addEventListener("click", function(e){
+    var b = e.target.closest("[data-demo]"); if(!b) return;
+    var d = demos[+b.getAttribute("data-demo")];
+    if (d[0]) bubble("me", d[0]);
+    setTimeout(function(){ bubble("bot", d[1], d[2]); }, 350);
+  });
+})();
+</script>
+</body>
+</html>
